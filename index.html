@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket 3D Model Viewer | Reeds School</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --deep-space: #0a0e27;
+            --nebula-purple: #6b2fb5;
+            --rocket-red: #ff3366;
+            --starlight: #e8f4ff;
+            --cosmic-blue: #1e90ff;
+            --moon-gray: #c8d0d8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--deep-space);
+            color: var(--starlight);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Animated star field background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        @keyframes shoot {
+            from {
+                transform: translateX(0) translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-1000px) translateY(500px);
+                opacity: 0;
+            }
+        }
+        
+        .shooting-star {
+            animation: shoot 2s linear;
+        }
+        
+        /* Main container */
+        .container {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 0;
+        }
+        
+        /* Control panel */
+        .control-panel {
+            background: linear-gradient(180deg, rgba(27, 38, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+            border-right: 2px solid var(--nebula-purple);
+            padding: 2rem;
+            overflow-y: auto;
+            box-shadow: 0 0 50px rgba(107, 47, 181, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--cosmic-blue), var(--nebula-purple), var(--rocket-red));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(107, 47, 181, 0.5)); }
+            50% { filter: drop-shadow(0 0 20px rgba(107, 47, 181, 0.8)); }
+        }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--moon-gray);
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--cosmic-blue);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid rgba(30, 144, 255, 0.3);
+            padding-bottom: 0.5rem;
+        }
+        
+        /* Upload button */
+        .upload-container {
+            position: relative;
+        }
+        
+        .upload-btn {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--rocket-red), #cc0044);
+            border: 2px solid var(--rocket-red);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 20px rgba(255, 51, 102, 0.4);
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 51, 102, 0.6);
+            background: linear-gradient(135deg, #ff4477, var(--rocket-red));
+        }
+        
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Viewer area */
+        .viewer-container {
+            position: relative;
+            background: radial-gradient(ellipse at center, rgba(30, 144, 255, 0.05) 0%, transparent 70%);
+        }
+        
+        #viewer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Controls overlay */
+        .viewer-controls {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: 1px solid rgba(107, 47, 181, 0.5);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .control-btn {
+            background: rgba(30, 144, 255, 0.2);
+            border: 1px solid var(--cosmic-blue);
+            color: var(--starlight);
+            padding: 0.7rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(30, 144, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 144, 255, 0.4);
+        }
+        
+        .fullscreen-btn {
+            background: linear-gradient(135deg, var(--nebula-purple), #8b3fc7);
+            border-color: var(--nebula-purple);
+            font-weight: 700;
+        }
+        
+        .fullscreen-btn:hover {
+            background: linear-gradient(135deg, #8b3fc7, var(--nebula-purple));
+            box-shadow: 0 5px 15px rgba(107, 47, 181, 0.6);
+        }
+        
+        /* Loading indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--cosmic-blue);
+            text-align: center;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(30, 144, 255, 0.2);
+            border-top-color: var(--cosmic-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Footer credit */
+        .credit {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: var(--starlight);
+            background: rgba(15, 23, 42, 0.8);
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(107, 47, 181, 0.5);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            letter-spacing: 1px;
+        }
+        
+        .credit strong {
+            color: var(--rocket-red);
+            font-weight: 900;
+        }
+        
+        /* Fullscreen mode */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: var(--deep-space);
+        }
+        
+        .fullscreen-mode .control-panel {
+            display: none;
+        }
+        
+        .exit-fullscreen {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(255, 51, 102, 0.9);
+            border: none;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            z-index: 10000;
+        }
+        
+        .exit-fullscreen:hover {
+            background: rgba(255, 51, 102, 1);
+            transform: scale(1.05);
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            
+            .control-panel {
+                border-right: none;
+                border-bottom: 2px solid var(--nebula-purple);
+                max-height: 40vh;
+            }
+            
+            .credit {
+                position: fixed;
+                bottom: 6rem;
+                top: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated star field -->
+    <div class="stars" id="starField"></div>
+    
+    <div class="container" id="mainContainer">
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="logo">ROCKET<br>VIEWER</div>
+            <div class="subtitle">3D Model Explorer</div>
+            
+            <div class="section">
+                <div class="section-title">Upload Model</div>
+                <div class="upload-container">
+                    <label for="fileInput" class="upload-btn">
+                        🚀 Upload STL File
+                    </label>
+                    <input type="file" id="fileInput" accept=".stl">
+                </div>
+            </div>
+            
+
+        </div>
+        
+        <!-- 3D Viewer -->
+        <div class="viewer-container">
+            <div id="viewer"></div>
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <div>Loading Model...</div>
+            </div>
+            
+            <div class="viewer-controls">
+                <button class="control-btn" id="resetBtn">Reset View</button>
+                <button class="control-btn" id="rotateBtn">Auto Rotate</button>
+                <button class="control-btn fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
+            </div>
+            
+            <div class="credit">
+                Made by <strong>REEDS SCHOOL STUDENTS</strong>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Star field generation
+        function createStarField() {
+            const starField = document.getElementById('starField');
+            const starCount = 150;
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starField.appendChild(star);
+            }
+            
+            // Add shooting stars
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const shootingStar = document.createElement('div');
+                    shootingStar.className = 'star shooting-star';
+                    shootingStar.style.left = Math.random() * 100 + '%';
+                    shootingStar.style.top = Math.random() * 50 + '%';
+                    shootingStar.style.width = '2px';
+                    shootingStar.style.height = '2px';
+                    starField.appendChild(shootingStar);
+                    setTimeout(() => shootingStar.remove(), 2000);
+                }
+            }, 3000);
+        }
+        
+        createStarField();
+        
+        // Three.js setup
+        let scene, camera, renderer, controls, currentModel, autoRotate = false;
+        
+        function initViewer() {
+            const container = document.getElementById('viewer');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = null;
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                45,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                10000
+            );
+            camera.position.set(0, 50, 150);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight1 = new THREE.DirectionalLight(0x1e90ff, 0.8);
+            directionalLight1.position.set(1, 1, 1);
+            scene.add(directionalLight1);
+            
+            const directionalLight2 = new THREE.DirectionalLight(0xff3366, 0.4);
+            directionalLight2.position.set(-1, -1, -1);
+            scene.add(directionalLight2);
+            
+            const pointLight = new THREE.PointLight(0x6b2fb5, 1, 500);
+            pointLight.position.set(0, 50, 50);
+            scene.add(pointLight);
+            
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(200, 20, 0x1e90ff, 0x6b2fb5);
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // Mouse controls (basic rotation)
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (isDragging && currentModel) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    
+                    currentModel.rotation.y += deltaX * 0.01;
+                    currentModel.rotation.x += deltaY * 0.01;
+                    
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.1;
+                camera.position.z = Math.max(50, Math.min(300, camera.position.z));
+            });
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Animation loop
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (currentModel && autoRotate) {
+                currentModel.rotation.y += 0.005;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            const container = document.getElementById('viewer');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        function clearModel() {
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel = null;
+            }
+        }
+        
+
+        // STL Loader
+        function loadSTLFile(file) {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            clearModel();
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                const geometry = parseSTL(arrayBuffer);
+                
+                if (geometry) {
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x1e90ff,
+                        shininess: 80,
+                        specular: 0x333333
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    
+                    // Center and scale the model
+                    geometry.computeBoundingBox();
+                    const center = new THREE.Vector3();
+                    geometry.boundingBox.getCenter(center);
+                    mesh.position.sub(center);
+                    
+                    const size = new THREE.Vector3();
+                    geometry.boundingBox.getSize(size);
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 50 / maxDim;
+                    mesh.scale.set(scale, scale, scale);
+                    
+                    currentModel = mesh;
+                    scene.add(currentModel);
+                    loading.style.display = 'none';
+                } else {
+                    alert('Error loading STL file');
+                    loading.style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Basic STL parser
+        function parseSTL(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            const isASCII = arrayBuffer.byteLength < 500 && 
+                           String.fromCharCode.apply(null, new Uint8Array(arrayBuffer.slice(0, 5))) === 'solid';
+            
+            if (isASCII) return null; // ASCII STL not implemented for simplicity
+            
+            // Binary STL
+            const faces = view.getUint32(80, true);
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const normals = [];
+            
+            for (let i = 0; i < faces; i++) {
+                const offset = 84 + i * 50;
+                
+                // Normal
+                const nx = view.getFloat32(offset, true);
+                const ny = view.getFloat32(offset + 4, true);
+                const nz = view.getFloat32(offset + 8, true);
+                
+                // Vertices
+                for (let j = 0; j < 3; j++) {
+                    const vOffset = offset + 12 + j * 12;
+                    vertices.push(
+                        view.getFloat32(vOffset, true),
+                        view.getFloat32(vOffset + 4, true),
+                        view.getFloat32(vOffset + 8, true)
+                    );
+                    normals.push(nx, ny, nz);
+                }
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+            
+            return geometry;
+        }
+        
+        // Event listeners
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadSTLFile(file);
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            camera.position.set(0, 50, 150);
+            if (currentModel) {
+                currentModel.rotation.set(0, 0, 0);
+            }
+        });
+        
+        document.getElementById('rotateBtn').addEventListener('click', () => {
+            autoRotate = !autoRotate;
+            document.getElementById('rotateBtn').textContent = autoRotate ? 'Stop Rotate' : 'Auto Rotate';
+        });
+        
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            const container = document.getElementById('mainContainer');
+            const viewer = document.querySelector('.viewer-container');
+            
+            if (!document.fullscreenElement) {
+                viewer.classList.add('fullscreen-mode');
+                document.documentElement.requestFullscreen();
+                
+                // Add exit button
+                const exitBtn = document.createElement('button');
+                exitBtn.className = 'exit-fullscreen';
+                exitBtn.textContent = '✕ Exit Fullscreen';
+                exitBtn.onclick = () => document.exitFullscreen();
+                viewer.appendChild(exitBtn);
+                
+                onWindowResize();
+            }
+        });
+        
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                document.querySelector('.viewer-container').classList.remove('fullscreen-mode');
+                const exitBtn = document.querySelector('.exit-fullscreen');
+                if (exitBtn) exitBtn.remove();
+                onWindowResize();
+            }
+        });
+        
+        // Initialize
+        initViewer();
+    </script>
+</body>
+</html>
